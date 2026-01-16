@@ -1,6 +1,7 @@
 {
   "name": "three-urdf",
   "version": "0.1.0",
+  "type": "module",
   "description": "URDF parser and Three.js scene builder with joint controls",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -40,6 +41,7 @@
     "prettier": "^3.8.0",
     "rollup": "^4.55.1",
     "rollup-plugin-dts": "^6.3.0",
+    "tslib": "^2.8.1",
     "tsx": "^4.7.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.17"
@@ -49,7 +51,12 @@
     "README.md",
     "LICENSE"
   ],
-  "keywords": ["urdf", "three.js", "robotics", "3d"],
+  "keywords": [
+    "urdf",
+    "three.js",
+    "robotics",
+    "3d"
+  ],
   "author": "Shawn Hice",
   "license": "MIT"
 }
