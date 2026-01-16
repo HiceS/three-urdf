@@ -1,6 +1,6 @@
 {
   "name": "three-urdf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "URDF parser and Three.js scene builder with joint controls",
   "main": "dist/index.cjs",
