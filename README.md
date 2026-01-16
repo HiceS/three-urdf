@@ -1,62 +1,213 @@
-# URDF-to-Three.js Library
+# three-urdf
 
-**A lightweight, modern TypeScript library for parsing URDF files and generating interactive Three.js 3D robot models.**
+A lightweight TypeScript library for parsing URDF files and rendering interactive Three.js robot models.
 
-## What is this?
+## Features
 
-This library makes it easy to take a **URDF** (Unified Robot Description Format) file — the standard XML-based robot description format used in ROS and robotics research — and turn it into a fully usable **Three.js** object hierarchy.
+- Parse URDF XML into strongly-typed TypeScript objects
+- Build Three.js Object3D hierarchies with proper kinematic chains
+- Load STL meshes with correct transforms and materials
+- Control joint angles programmatically
+- Automatic Z-up to Y-up coordinate conversion
+- Debug visualization mode (spheres and lines)
 
-Once loaded, you get:
-- A scene-ready group of links and joints
-- Proper kinematic hierarchy (parent-child relationships)
-- Support for moving joints programmatically (revolute, prismatic, fixed, etc.)
-- Visuals & collision geometry where available (meshes, colors, materials)
-- Joint limits, mimic joints, and other common URDF features (planned / partial)
+## Installation
 
-The library is designed to be consumed in modern web projects — especially **React + Vite + TypeScript** applications — while staying flexible with Three.js versions.
-
-## Goals & Philosophy
-
-- **Minimal dependencies** — only `three` as a peer dependency (loose version range)
-- **TypeScript-first** — excellent types & autocompletion for robot models, joints, links
-- **Performant & tree-shakeable** — suitable for real-time robot visualization and control UIs
-- **No forced renderer** — works with any Three.js scene (WebGLRenderer, CSS3DRenderer, etc.)
-- **Future-friendly** — easy to extend for ROS integration, XR, animations, inverse kinematics, etc.
-- **Developer-friendly publishing** — ESM + CJS + declarations, ready for npm
-
-## Target Use Cases
-
-- Web-based robot teleoperation interfaces
-- Interactive robot model viewers in documentation / education
-- Digital twins and simulation previews in the browser
-- ROS web tools (combined with rosbridge / roslibjs)
-- Three.js-based robotics demos and prototypes
-- Visual debugging of robot configurations and joint states
-
-## High-Level API Vision (conceptual)
-
-```ts
-import { parseURDF, buildThreeModel, createJointController } from 'urdf-three';
-
-// 1. Parse raw URDF string or file content
-const robotModel = parseURDF(urdfString, { packageMap });
-
-// 2. Build Three.js hierarchy
-const robotGroup = buildThreeModel(robotModel, {
-  loadMesh: customMeshLoader,       // optional override
-  workingPath: '/models/',          // for resolving mesh paths
-});
-
-// 3. Add to your scene
-scene.add(robotGroup);
-
-// 4. Control joints (simple API example)
-const controller = createJointController(robotGroup);
-controller.setJointValue('shoulder_pan_joint', 1.57);    // radians
-controller.setJointValues({ elbow_joint: 0.8, wrist_1_joint: -1.2 });
-
-// Or animate smoothly
-controller.animateTo({ shoulder_lift_joint: Math.PI / 2 }, { duration: 1200 });
+```bash
+npm install three-urdf three
 ```
 
-Ideally we would want to import the URDF as well as the associated meshes. The meshes are generally OBJ or STL files. But for now we are just parsing the URDF.
+`three` is a peer dependency - you need to install it separately.
+
+## Quick Start
+
+### Basic Usage
+
+```typescript
+import { parseURDF, loadRobot } from 'three-urdf';
+
+// fetch and parse the URDF
+const response = await fetch('/models/robot.urdf');
+const urdfText = await response.text();
+
+const robotModel = parseURDF(urdfText, {
+  packageMap: {
+    // map ROS package names to actual paths
+    'my_robot_description': '/models/my_robot',
+  },
+});
+
+// build the Three.js object with meshes
+const robot = await loadRobot(robotModel);
+
+// add to your scene
+scene.add(robot);
+```
+
+### Controlling Joints
+
+```typescript
+// set individual joint
+const joint = robot.joints.get('shoulder_pan_joint');
+joint?.setJointValue(Math.PI / 4); // radians
+
+// set multiple joints at once
+robot.setJointValues({
+  shoulder_pan_joint: 0.5,
+  shoulder_lift_joint: -0.3,
+  elbow_joint: 1.2,
+});
+```
+
+### Debug Visualization
+
+Use `buildRobot` for a lightweight debug view without loading meshes:
+
+```typescript
+import { parseURDF, buildRobot } from 'three-urdf';
+
+const robotModel = parseURDF(urdfText);
+const robot = buildRobot(robotModel, {
+  jointRadius: 0.03,    // size of joint spheres
+  jointColor: 0xff0000, // red
+  linkColor: 0x00ff00,  // green lines
+});
+```
+
+## React Three Fiber Example
+
+```tsx
+import { useEffect, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+import { parseURDF, loadRobot } from 'three-urdf';
+import type { URDFRobot } from 'three-urdf';
+
+function Robot() {
+  const [robot, setRobot] = useState<URDFRobot | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      const res = await fetch('/models/robot.urdf');
+      const urdf = await res.text();
+      const model = parseURDF(urdf, {
+        packageMap: { robot_description: '/models' },
+      });
+      const obj = await loadRobot(model);
+      setRobot(obj);
+    }
+    load();
+  }, []);
+
+  if (!robot) return null;
+  return <primitive object={robot} />;
+}
+
+export default function App() {
+  return (
+    <Canvas camera={{ position: [2, 2, 2] }}>
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[5, 5, 5]} />
+      <Robot />
+      <OrbitControls />
+    </Canvas>
+  );
+}
+```
+
+## API Reference
+
+### `parseURDF(urdfString, options?)`
+
+Parse a URDF XML string into a `RobotModel` object.
+
+**Options:**
+- `packageMap?: Record<string, string>` - Map ROS package names to URL paths
+
+**Returns:** `RobotModel` with links, joints, and materials
+
+### `buildRobot(model, options?)`
+
+Build a Three.js Object3D hierarchy with debug visualization (no mesh loading).
+
+**Options:**
+- `jointRadius?: number` - Radius of joint spheres (default: 0.02)
+- `jointColor?: number` - Color of joint spheres (default: 0xff0000)
+- `linkColor?: number` - Color of link lines (default: 0x00ff00)
+- `convertToYUp?: boolean` - Convert Z-up to Y-up (default: true)
+- `showDebug?: boolean` - Show debug visualization (default: true)
+
+**Returns:** `URDFRobot`
+
+### `loadRobot(model, options?)`
+
+Build a Three.js Object3D hierarchy and load STL meshes.
+
+**Options:** Same as `buildRobot`, plus:
+- `showDebug?: boolean` - Show debug visualization (default: false)
+
+**Returns:** `Promise<URDFRobot>`
+
+### `URDFRobot`
+
+The root robot object extending `THREE.Group`:
+
+```typescript
+interface URDFRobot extends Group {
+  joints: Map<string, URDFJoint>;
+  links: Map<string, Object3D>;
+  setJointValues: (values: Record<string, number>) => void;
+}
+```
+
+### `URDFJoint`
+
+Joint object extending `THREE.Object3D`:
+
+```typescript
+interface URDFJoint extends Object3D {
+  jointType: 'revolute' | 'continuous' | 'prismatic' | 'fixed' | 'floating' | 'planar';
+  axis: Vector3;
+  jointName: string;
+  limits?: { lower?: number; upper?: number };
+  jointValue: number;
+  setJointValue: (value: number) => void;
+}
+```
+
+## Coordinate Systems
+
+URDF uses Z-up coordinates while Three.js uses Y-up. By default, `loadRobot` and `buildRobot` apply a -90° rotation around X to convert coordinates. Disable with `convertToYUp: false`.
+
+## URDF Euler Angles
+
+URDF specifies rotations as RPY (roll-pitch-yaw) using **extrinsic XYZ** order ("fixed axis"). This is equivalent to **intrinsic ZYX** in Three.js Euler angles.
+
+## Supported URDF Features
+
+- Links with visual and collision geometry
+- Joints: revolute, continuous, prismatic, fixed
+- Joint limits (upper/lower bounds)
+- Materials with colors
+- STL mesh loading
+- Package path resolution
+
+## Development
+
+```bash
+# install dependencies
+npm install
+
+# run tests
+npm test
+
+# build library
+npm run build
+
+# run demo
+cd demo && npm install && npm run dev
+```
+
+## License
+
+MIT
