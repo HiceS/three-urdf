@@ -1,7 +1,9 @@
 dist/
 node_modules/
 .DS_Store
-models/
+models/*
+!models/kuka_iiwa/
+models/kuka_iiwa/*
 !models/kuka_iiwa/iiwa14.urdf
 .env
 .env.local
