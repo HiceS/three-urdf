@@ -2,6 +2,9 @@
 
 A lightweight TypeScript library for parsing URDF files and rendering interactive Three.js robot models.
 
+
+<img width="740" height="471" alt="Kuka Robot Example" src="https://github.com/user-attachments/assets/4d6e74d7-e9c5-49b9-ad8f-29c6594e5561" />
+
 ## Features
 
 - Parse URDF XML into strongly-typed TypeScript objects
