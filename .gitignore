@@ -1,0 +1,11 @@
+dist/
+node_modules/
+models/
+!models/kuka_iiwa/iiwa14.urdf
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+demo/
+demo/public/
