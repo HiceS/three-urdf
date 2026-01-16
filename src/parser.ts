@@ -28,7 +28,7 @@ import type {
  * Type for parsed XML element from fast-xml-parser
  */
 type XMLElement = {
-  [key: string]: any;
+  [key: string]: unknown;
   ':@'?: { [key: string]: string }; // attributes
 };
 
@@ -81,7 +81,7 @@ function getAttribute(element: XMLElement, name: string, defaultValue?: string):
  * Get child element by name (returns first match)
  */
 function getChild(element: XMLElement, name: string): XMLElement | null {
-  const child = element[name];
+  const child = element[name] as XMLElement | XMLElement[] | undefined;
   if (Array.isArray(child)) {
     return child[0] || null;
   }
@@ -92,7 +92,7 @@ function getChild(element: XMLElement, name: string): XMLElement | null {
  * Get all child elements by name (always returns array)
  */
 function getChildren(element: XMLElement, name: string): XMLElement[] {
-  const child = element[name];
+  const child = element[name] as XMLElement | XMLElement[] | undefined;
   if (!child) {
     return [];
   }
@@ -474,7 +474,7 @@ function parseJointAxis(element: XMLElement): JointAxis {
 /**
  * Parse joint element
  */
-function parseJoint(element: XMLElement, options: ParseURDFOptions): Joint {
+function parseJoint(element: XMLElement): Joint {
   const name = getAttribute(element, 'name');
   if (!name) {
     throw new Error('Joint element missing name attribute');
@@ -590,7 +590,7 @@ export function parseURDF(urdfString: string, options: ParseURDFOptions = {}): R
   // Parse joints
   const jointElements = getChildren(robotEl, 'joint');
   for (const jointEl of jointElements) {
-    const joint = parseJoint(jointEl, options);
+    const joint = parseJoint(jointEl);
     model.joints.set(joint.name, joint);
   }
 

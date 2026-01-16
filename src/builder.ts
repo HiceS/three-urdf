@@ -215,11 +215,12 @@ function buildRobotStructure(
 
         switch (jointData.type) {
           case 'revolute':
-          case 'continuous':
+          case 'continuous': {
             // compose: origin rotation * axis rotation
             const axisQuat = new Quaternion().setFromAxisAngle(axis, value);
             jointObject.quaternion.copy(originQuaternion).multiply(axisQuat);
             break;
+          }
           case 'prismatic':
             jointObject.position.copy(jointData.origin.xyz);
             jointObject.position.addScaledVector(axis, value);
@@ -274,7 +275,7 @@ export async function loadRobot(
       const meshFilename = visual.geometry.filename;
       if (!meshFilename) continue;
 
-      const loadPromise = new Promise<void>((resolve, reject) => {
+      const loadPromise = new Promise<void>((resolve) => {
         stlLoader.load(
           meshFilename,
           (geometry) => {
