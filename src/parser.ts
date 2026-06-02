@@ -309,9 +309,15 @@ function parseVisual(element: XMLElement, options: ParseURDFOptions): Visual {
   }
 
   if (materialEl) {
-    const materialName = getAttribute(materialEl, 'name');
-    if (materialName) {
-      visual.material = materialName; // Reference to material
+    const colorEl = getChild(materialEl, 'color');
+    const textureEl = getChild(materialEl, 'texture');
+    if (colorEl || textureEl) {
+      visual.material = parseMaterial(materialEl);
+    } else {
+      const materialName = getAttribute(materialEl, 'name');
+      if (materialName) {
+        visual.material = materialName;
+      }
     }
   }
 

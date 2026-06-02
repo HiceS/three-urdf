@@ -1,60 +1,43 @@
 # three-urdf
 
-A lightweight TypeScript library for parsing URDF files and rendering interactive Three.js robot models.
-
+Parse URDF files and build interactive Three.js robot models with joint controls.
 
 <img width="740" height="471" alt="Kuka Robot Example" src="https://github.com/user-attachments/assets/4d6e74d7-e9c5-49b9-ad8f-29c6594e5561" />
 
-## Features
-
-- Parse URDF XML into strongly-typed TypeScript objects
-- Build Three.js Object3D hierarchies with proper kinematic chains
-- Load STL meshes with correct transforms and materials
-- Control joint angles programmatically
-- Automatic Z-up to Y-up coordinate conversion
-- Debug visualization mode (spheres and lines)
-
-## Installation
+## Install
 
 ```bash
 npm install three-urdf three
 ```
 
-`three` is a peer dependency - you need to install it separately.
+`three` is a peer dependency — you provide it, we don't bundle it.
 
 ## Quick Start
-
-### Basic Usage
 
 ```typescript
 import { parseURDF, loadRobot } from 'three-urdf';
 
-// fetch and parse the URDF
 const response = await fetch('/models/robot.urdf');
 const urdfText = await response.text();
 
-const robotModel = parseURDF(urdfText, {
+const model = parseURDF(urdfText, {
   packageMap: {
-    // map ROS package names to actual paths
     'my_robot_description': '/models/my_robot',
   },
 });
 
-// build the Three.js object with meshes
-const robot = await loadRobot(robotModel);
-
-// add to your scene
+const robot = await loadRobot(model);
 scene.add(robot);
 ```
 
-### Controlling Joints
+## Controlling Joints
 
 ```typescript
-// set individual joint
+// Single joint (radians for revolute, meters for prismatic)
 const joint = robot.joints.get('shoulder_pan_joint');
-joint?.setJointValue(Math.PI / 4); // radians
+joint?.setJointValue(Math.PI / 4);
 
-// set multiple joints at once
+// Multiple joints at once
 robot.setJointValues({
   shoulder_pan_joint: 0.5,
   shoulder_lift_joint: -0.3,
@@ -62,22 +45,39 @@ robot.setJointValues({
 });
 ```
 
-### Debug Visualization
+Joint values are automatically clamped to URDF-defined limits. Mimic joints propagate automatically — when you move a source joint, its followers update.
 
-Use `buildRobot` for a lightweight debug view without loading meshes:
+## Mesh Formats
+
+The library picks the right Three.js loader based on file extension:
+
+| Extension | Loader | Notes |
+|-----------|--------|-------|
+| `.stl` | STLLoader | Default if extension is unknown |
+| `.dae` | ColladaLoader | Common in ROS packages |
+| `.obj` | OBJLoader | |
+| `.gltf` / `.glb` | GLTFLoader | |
+
+## Primitive Geometry
+
+URDFs that use `<box>`, `<cylinder>`, `<sphere>`, or `<capsule>` for visuals render without any mesh files. This means you can test URDF structures without shipping STL/DAE assets.
+
+## Debug Visualization
+
+`buildRobot` gives you a lightweight wireframe view — spheres at joints, lines between them — without loading any meshes:
 
 ```typescript
 import { parseURDF, buildRobot } from 'three-urdf';
 
-const robotModel = parseURDF(urdfText);
-const robot = buildRobot(robotModel, {
-  jointRadius: 0.03,    // size of joint spheres
-  jointColor: 0xff0000, // red
-  linkColor: 0x00ff00,  // green lines
+const model = parseURDF(urdfText);
+const robot = buildRobot(model, {
+  jointRadius: 0.03,
+  jointColor: 0xff0000,
+  linkColor: 0x00ff00,
 });
 ```
 
-## React Three Fiber Example
+## React Three Fiber
 
 ```tsx
 import { useEffect, useState } from 'react';
@@ -96,8 +96,7 @@ function Robot() {
       const model = parseURDF(urdf, {
         packageMap: { robot_description: '/models' },
       });
-      const obj = await loadRobot(model);
-      setRobot(obj);
+      setRobot(await loadRobot(model));
     }
     load();
   }, []);
@@ -118,97 +117,98 @@ export default function App() {
 }
 ```
 
-## API Reference
+## API
 
 ### `parseURDF(urdfString, options?)`
 
-Parse a URDF XML string into a `RobotModel` object.
+Parses a URDF XML string into a `RobotModel`.
 
-**Options:**
-- `packageMap?: Record<string, string>` - Map ROS package names to URL paths
+| Option | Type | Description |
+|--------|------|-------------|
+| `packageMap` | `Record<string, string>` | Maps ROS package names to URL paths. `package://foo/bar.stl` becomes `${packageMap['foo']}/bar.stl` |
+| `workingPath` | `string` | Base path prepended to relative mesh filenames |
 
-**Returns:** `RobotModel` with links, joints, and materials
-
-### `buildRobot(model, options?)`
-
-Build a Three.js Object3D hierarchy with debug visualization (no mesh loading).
-
-**Options:**
-- `jointRadius?: number` - Radius of joint spheres (default: 0.02)
-- `jointColor?: number` - Color of joint spheres (default: 0xff0000)
-- `linkColor?: number` - Color of link lines (default: 0x00ff00)
-- `convertToYUp?: boolean` - Convert Z-up to Y-up (default: true)
-- `showDebug?: boolean` - Show debug visualization (default: true)
-
-**Returns:** `URDFRobot`
+Returns a `RobotModel` containing Maps of links, joints, and materials.
 
 ### `loadRobot(model, options?)`
 
-Build a Three.js Object3D hierarchy and load STL meshes.
+Builds a Three.js scene graph and loads all mesh files. Returns `Promise<URDFRobot>`.
 
-**Options:** Same as `buildRobot`, plus:
-- `showDebug?: boolean` - Show debug visualization (default: false)
+### `buildRobot(model, options?)`
 
-**Returns:** `Promise<URDFRobot>`
+Same as `loadRobot` but synchronous, debug-only — no mesh loading, just joint spheres and link lines. Returns `URDFRobot`.
+
+### Build Options
+
+Both `loadRobot` and `buildRobot` accept:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `convertToYUp` | `boolean` | `true` | Rotate root -90deg around X (URDF is Z-up, Three.js is Y-up) |
+| `showDebug` | `boolean` | `false` / `true` | Debug spheres and lines. Always on for `buildRobot`, off for `loadRobot` |
+| `showCollision` | `boolean` | `false` | Render collision geometry as transparent wireframe overlays |
+| `collisionColor` | `number` | `0x00ffff` | Color for collision wireframes |
+| `collisionOpacity` | `number` | `0.3` | Opacity for collision wireframes |
+| `jointRadius` | `number` | `0.02` | Debug sphere radius |
+| `jointColor` | `number` | `0xff0000` | Debug sphere color |
+| `linkColor` | `number` | `0x00ff00` | Debug line color |
+| `onMeshError` | `(filename, error) => void` | `console.warn` | Called when a mesh file fails to load |
 
 ### `URDFRobot`
 
-The root robot object extending `THREE.Group`:
+Extends `THREE.Group`:
 
 ```typescript
-interface URDFRobot extends Group {
-  joints: Map<string, URDFJoint>;
-  links: Map<string, Object3D>;
-  setJointValues: (values: Record<string, number>) => void;
-}
+robot.joints    // Map<string, URDFJoint>
+robot.links     // Map<string, Object3D>
+robot.setJointValues({ joint_name: value })
 ```
 
 ### `URDFJoint`
 
-Joint object extending `THREE.Object3D`:
+Extends `THREE.Object3D`:
 
 ```typescript
-interface URDFJoint extends Object3D {
-  jointType: 'revolute' | 'continuous' | 'prismatic' | 'fixed' | 'floating' | 'planar';
-  axis: Vector3;
-  jointName: string;
-  limits?: { lower?: number; upper?: number };
-  jointValue: number;
-  setJointValue: (value: number) => void;
-}
+joint.jointType    // 'revolute' | 'continuous' | 'prismatic' | 'fixed' | 'floating' | 'planar'
+joint.jointName    // string
+joint.axis         // Vector3
+joint.limits       // { lower?: number; upper?: number } | undefined
+joint.jointValue   // number | number[]
+joint.setJointValue(value)  // number for revolute/prismatic, number[] for floating (6DOF) / planar (2DOF)
 ```
+
+## Joint Types
+
+| Type | `setJointValue` input | Behavior |
+|------|----------------------|----------|
+| `revolute` | `number` (radians) | Rotates around axis, clamped to limits |
+| `continuous` | `number` (radians) | Same as revolute, no limits |
+| `prismatic` | `number` (meters) | Translates along axis, clamped to limits |
+| `fixed` | — | No motion |
+| `floating` | `[x, y, z, roll, pitch, yaw]` | Full 6DOF positioning |
+| `planar` | `[x, y]` | Translation in the plane perpendicular to axis |
 
 ## Coordinate Systems
 
-URDF uses Z-up coordinates while Three.js uses Y-up. By default, `loadRobot` and `buildRobot` apply a -90° rotation around X to convert coordinates. Disable with `convertToYUp: false`.
+URDF uses Z-up. Three.js uses Y-up. By default the root gets a -90deg X rotation to convert. Pass `convertToYUp: false` to skip this.
 
-## URDF Euler Angles
+URDF rotations (RPY) use extrinsic XYZ order, which maps to Three.js Euler order `'ZYX'`. This is handled internally — you don't need to think about it unless you're reading the source.
 
-URDF specifies rotations as RPY (roll-pitch-yaw) using **extrinsic XYZ** order ("fixed axis"). This is equivalent to **intrinsic ZYX** in Three.js Euler angles.
+## Limitations
 
-## Supported URDF Features
-
-- Links with visual and collision geometry
-- Joints: revolute, continuous, prismatic, fixed
-- Joint limits (upper/lower bounds)
-- Materials with colors
-- STL mesh loading
-- Package path resolution
+- **Xacro**: Not supported. Run `xacro` to expand macros into plain URDF first.
+- **Gazebo/transmission tags**: Silently ignored. These are ROS-specific and not needed for visualization.
+- **Physics**: Joint dynamics (damping, friction) and safety controllers are parsed and available on the model but not applied to any physics simulation.
+- **Textures**: Parsed and loaded via `TextureLoader`, but many URDF files don't use them.
+- **Sensors**: Not parsed.
 
 ## Development
 
 ```bash
-# install dependencies
 npm install
-
-# run tests
 npm test
-
-# build library
 npm run build
-
-# run demo
-cd demo && npm install && npm run dev
+npm run lint
 ```
 
 ## License

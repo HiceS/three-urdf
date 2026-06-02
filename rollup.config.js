@@ -24,7 +24,7 @@ export default [
       commonjs(),
       typescript({ tsconfig: './tsconfig.json' }),
     ],
-    external: ['three', 'fast-xml-parser'], // Don't bundle peer dependencies
+    external: (id) => id === 'fast-xml-parser' || id === 'three' || id.startsWith('three/'),
   },
   // Type declarations
   {

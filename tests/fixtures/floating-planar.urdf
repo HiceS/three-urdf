@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<robot name="floating_planar_robot">
+  <link name="world"/>
+
+  <link name="floating_body">
+    <visual>
+      <geometry>
+        <box size="0.2 0.2 0.2"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="planar_slider">
+    <visual>
+      <geometry>
+        <box size="0.1 0.1 0.02"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="floating_joint" type="floating">
+    <parent link="world"/>
+    <child link="floating_body"/>
+    <origin xyz="0 0 1"/>
+  </joint>
+
+  <joint name="planar_joint" type="planar">
+    <parent link="floating_body"/>
+    <child link="planar_slider"/>
+    <origin xyz="0 0 0.15"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+</robot>
