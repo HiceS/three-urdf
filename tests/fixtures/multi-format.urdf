@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<robot name="multi_format_robot">
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://robot_description/meshes/base.stl"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="dae_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://robot_description/meshes/arm.dae"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="obj_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://robot_description/meshes/gripper.obj" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="gltf_link">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/tool.gltf"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="glb_link">
+    <visual>
+      <geometry>
+        <mesh filename="meshes/tool.glb"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="base_to_dae" type="fixed">
+    <parent link="base_link"/>
+    <child link="dae_link"/>
+    <origin xyz="0 0 0.1"/>
+  </joint>
+
+  <joint name="dae_to_obj" type="fixed">
+    <parent link="dae_link"/>
+    <child link="obj_link"/>
+    <origin xyz="0 0 0.2"/>
+  </joint>
+
+  <joint name="obj_to_gltf" type="fixed">
+    <parent link="obj_link"/>
+    <child link="gltf_link"/>
+    <origin xyz="0 0 0.1"/>
+  </joint>
+
+  <joint name="gltf_to_glb" type="fixed">
+    <parent link="gltf_link"/>
+    <child link="glb_link"/>
+    <origin xyz="0 0 0.1"/>
+  </joint>
+</robot>

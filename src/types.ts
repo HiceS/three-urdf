@@ -257,13 +257,4 @@ export interface ParseURDFOptions {
    */
   workingPath?: string;
   
-  /**
-   * Whether to ignore Gazebo-specific extensions
-   */
-  ignoreGazebo?: boolean;
-  
-  /**
-   * Whether to ignore transmission elements
-   */
-  ignoreTransmission?: boolean;
 }

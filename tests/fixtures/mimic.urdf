@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot name="gripper_robot">
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.1 0.1 0.05"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="finger_left">
+    <visual>
+      <geometry>
+        <box size="0.02 0.08 0.02"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <link name="finger_right">
+    <visual>
+      <geometry>
+        <box size="0.02 0.08 0.02"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <joint name="finger_left_joint" type="prismatic">
+    <parent link="base_link"/>
+    <child link="finger_left"/>
+    <origin xyz="-0.03 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="0" upper="0.04" effort="10" velocity="0.5"/>
+  </joint>
+
+  <joint name="finger_right_joint" type="prismatic">
+    <parent link="base_link"/>
+    <child link="finger_right"/>
+    <origin xyz="0.03 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.04" upper="0" effort="10" velocity="0.5"/>
+    <mimic joint="finger_left_joint" multiplier="-1" offset="0"/>
+  </joint>
+</robot>

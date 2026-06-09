@@ -216,9 +216,117 @@ describe('URDF Parser', () => {
   it('should handle links without visual or collision elements', () => {
     const model = parseURDF(urdfString);
     const worldLink = model.links.get('world');
-    
+
     expect(worldLink).toBeDefined();
     expect(worldLink?.visuals.length).toBe(0);
     expect(worldLink?.collisions.length).toBe(0);
+  });
+
+  describe('edge cases', () => {
+    it('should parse an empty robot (no links or joints)', () => {
+      const urdf = `<?xml version="1.0"?><robot name="empty"></robot>`;
+      const model = parseURDF(urdf);
+      expect(model.name).toBe('empty');
+      expect(model.links.size).toBe(0);
+      expect(model.joints.size).toBe(0);
+    });
+
+    it('should throw on missing <robot> element', () => {
+      const urdf = `<?xml version="1.0"?><notarobot></notarobot>`;
+      expect(() => parseURDF(urdf)).toThrow('missing <robot> root element');
+    });
+
+    it('should throw on link missing name attribute', () => {
+      // A link with child elements but no name attribute triggers the error
+      const urdf = `<?xml version="1.0"?>
+<robot name="test">
+  <link>
+    <visual><geometry><box size="1 1 1"/></geometry></visual>
+  </link>
+</robot>`;
+      expect(() => parseURDF(urdf)).toThrow('missing name attribute');
+    });
+
+    it('should throw on joint missing name', () => {
+      const urdf = `<?xml version="1.0"?>
+<robot name="test">
+  <link name="a"/>
+  <link name="b"/>
+  <joint type="fixed"><parent link="a"/><child link="b"/></joint>
+</robot>`;
+      expect(() => parseURDF(urdf)).toThrow('missing name attribute');
+    });
+
+    it('should throw on joint missing parent/child', () => {
+      const urdf = `<?xml version="1.0"?>
+<robot name="test">
+  <link name="a"/>
+  <link name="b"/>
+  <joint name="j1" type="fixed"><parent link="a"/></joint>
+</robot>`;
+      expect(() => parseURDF(urdf)).toThrow('missing parent or child');
+    });
+
+    it('should throw on invalid vector3 format', () => {
+      const urdf = `<?xml version="1.0"?>
+<robot name="test">
+  <link name="a">
+    <inertial>
+      <origin xyz="bad format"/>
+      <mass value="1"/>
+    </inertial>
+  </link>
+</robot>`;
+      expect(() => parseURDF(urdf)).toThrow('Invalid vector3');
+    });
+
+    it('should parse URDF with only primitive geometry', () => {
+      const urdf = `<?xml version="1.0"?>
+<robot name="primitives">
+  <link name="base">
+    <visual><geometry><box size="1 1 1"/></geometry></visual>
+    <visual><geometry><cylinder radius="0.5" length="1"/></geometry></visual>
+    <visual><geometry><sphere radius="0.3"/></geometry></visual>
+  </link>
+</robot>`;
+      const model = parseURDF(urdf);
+      expect(model.links.get('base')?.visuals.length).toBe(3);
+      expect(model.links.get('base')?.visuals[0].geometry.type).toBe('box');
+      expect(model.links.get('base')?.visuals[1].geometry.type).toBe('cylinder');
+      expect(model.links.get('base')?.visuals[2].geometry.type).toBe('sphere');
+    });
+
+    it('should parse inline material definitions in visuals', () => {
+      const urdf = `<?xml version="1.0"?>
+<robot name="test">
+  <link name="link1">
+    <visual>
+      <geometry><box size="1 1 1"/></geometry>
+      <material name="custom_red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+  </link>
+</robot>`;
+      const model = parseURDF(urdf);
+      const visual = model.links.get('link1')?.visuals[0];
+      expect(visual?.material).toBeDefined();
+      expect(typeof visual?.material).not.toBe('string');
+      if (typeof visual?.material === 'object') {
+        expect(visual.material.color?.r).toBe(1);
+        expect(visual.material.color?.g).toBe(0);
+        expect(visual.material.color?.b).toBe(0);
+      }
+    });
+
+    it('should parse mimic joints', () => {
+      const urdf = readFileSync(join(__dirname, 'fixtures/mimic.urdf'), 'utf-8');
+      const model = parseURDF(urdf);
+      const mimicJoint = model.joints.get('finger_right_joint');
+      expect(mimicJoint?.mimic).toBeDefined();
+      expect(mimicJoint?.mimic?.joint).toBe('finger_left_joint');
+      expect(mimicJoint?.mimic?.multiplier).toBe(-1);
+      expect(mimicJoint?.mimic?.offset).toBe(0);
+    });
   });
 });
